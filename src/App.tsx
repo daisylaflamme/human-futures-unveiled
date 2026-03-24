@@ -3,8 +3,11 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import Index from "./pages/Index.tsx";
-import NotFound from "./pages/NotFound.tsx";
+import CoverPage from "./pages/CoverPage";
+import TableOfContents from "./pages/TableOfContents";
+import ChapterPage from "./pages/ChapterPage";
+import ClosingPage from "./pages/ClosingPage";
+import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
@@ -15,8 +18,10 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="/" element={<CoverPage />} />
+          <Route path="/chapters" element={<TableOfContents />} />
+          <Route path="/chapter/:id" element={<ChapterPage />} />
+          <Route path="/closing" element={<ClosingPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
