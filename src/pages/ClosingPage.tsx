@@ -1,9 +1,25 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import BookLayout from "@/components/book/BookLayout";
 import { Button } from "@/components/ui/button";
-import { Download, ArrowLeft } from "lucide-react";
+import { Download, ArrowLeft, Loader2 } from "lucide-react";
+import { generateBookPdf } from "@/lib/generatePdf";
 
 const ClosingPage = () => {
+  const [pdfLoading, setPdfLoading] = useState(false);
+
+  const handleDownloadPdf = async () => {
+    if (pdfLoading) return;
+    setPdfLoading(true);
+    try {
+      await generateBookPdf();
+    } catch (err) {
+      console.error("PDF generation failed:", err);
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
   return (
     <BookLayout>
       <div className="min-h-screen flex items-center justify-center px-4 md:px-8">
@@ -35,9 +51,9 @@ const ClosingPage = () => {
                 Back to Chapters
               </Button>
             </Link>
-            <Button className="gap-2">
-              <Download className="w-4 h-4" />
-              Download PDF
+            <Button className="gap-2" onClick={handleDownloadPdf} disabled={pdfLoading}>
+              {pdfLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+              {pdfLoading ? "Generating…" : "Download PDF"}
             </Button>
           </div>
         </div>

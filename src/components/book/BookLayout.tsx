@@ -1,8 +1,9 @@
 import { ReactNode, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, Download } from "lucide-react";
+import { Menu, X, Download, Loader2 } from "lucide-react";
 import { chapters } from "@/data/chapters";
 import ProgressBar from "./ProgressBar";
+import { generateBookPdf } from "@/lib/generatePdf";
 
 interface BookLayoutProps {
   children: ReactNode;
@@ -12,8 +13,21 @@ interface BookLayoutProps {
 
 const BookLayout = ({ children, showProgress = false, currentChapter }: BookLayoutProps) => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
   const location = useLocation();
   const isHome = location.pathname === "/";
+
+  const handleDownloadPdf = async () => {
+    if (pdfLoading) return;
+    setPdfLoading(true);
+    try {
+      await generateBookPdf();
+    } catch (err) {
+      console.error("PDF generation failed:", err);
+    } finally {
+      setPdfLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen">
@@ -36,8 +50,12 @@ const BookLayout = ({ children, showProgress = false, currentChapter }: BookLayo
               <Link to="/chapters" className="text-xs tracking-wider uppercase text-muted-foreground hover:text-foreground transition-colors">
                 Chapters
               </Link>
-              <button className="text-xs tracking-wider uppercase text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5">
-                <Download className="w-3 h-3" />
+              <button
+                onClick={handleDownloadPdf}
+                disabled={pdfLoading}
+                className="text-xs tracking-wider uppercase text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {pdfLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
                 PDF
               </button>
             </div>
@@ -69,8 +87,12 @@ const BookLayout = ({ children, showProgress = false, currentChapter }: BookLayo
                   {ch.id}. {ch.title}
                 </Link>
               ))}
-              <button className="flex items-center gap-2 py-2 text-sm text-muted-foreground hover:text-foreground">
-                <Download className="w-3.5 h-3.5" />
+              <button
+                onClick={handleDownloadPdf}
+                disabled={pdfLoading}
+                className="flex items-center gap-2 py-2 text-sm text-muted-foreground hover:text-foreground disabled:opacity-50"
+              >
+                {pdfLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
                 Download PDF
               </button>
             </div>
