@@ -6,7 +6,7 @@ const PAGE_W = 595.28; // A4 width in points
 const PAGE_H = 841.89; // A4 height in points
 const CONTENT_W = PAGE_W - MARGIN * 2;
 
-async function loadImageAsDataUrl(src: string): Promise<string> {
+async function loadImageAsDataUrl(src: string): Promise<{ dataUrl: string; width: number; height: number }> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
@@ -16,7 +16,11 @@ async function loadImageAsDataUrl(src: string): Promise<string> {
       canvas.height = img.naturalHeight;
       const ctx = canvas.getContext("2d")!;
       ctx.drawImage(img, 0, 0);
-      resolve(canvas.toDataURL("image/jpeg", 0.85));
+      resolve({
+        dataUrl: canvas.toDataURL("image/jpeg", 0.92),
+        width: img.naturalWidth,
+        height: img.naturalHeight,
+      });
     };
     img.onerror = reject;
     img.src = src;
@@ -104,10 +108,12 @@ export async function generateBookPdf(): Promise<void> {
     // Chapter image
     let yOffset = 135;
     try {
-      const imgData = await loadImageAsDataUrl(chapter.image);
-      const imgW = CONTENT_W;
-      const imgH = imgW * (9 / 16);
-      doc.addImage(imgData, "JPEG", MARGIN, yOffset, imgW, imgH);
+      const { dataUrl, width: natW, height: natH } = await loadImageAsDataUrl(chapter.image);
+      const ratio = natH / natW;
+      const imgW = Math.min(CONTENT_W, 480);
+      const imgH = imgW * ratio;
+      const imgX = (PAGE_W - imgW) / 2;
+      doc.addImage(dataUrl, "JPEG", imgX, yOffset, imgW, imgH);
       yOffset += imgH + 30;
     } catch {
       yOffset += 20;
