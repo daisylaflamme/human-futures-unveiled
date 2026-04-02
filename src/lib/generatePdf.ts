@@ -1,7 +1,9 @@
 import jsPDF from "jspdf";
 import { chapters } from "@/data/chapters";
+import coverHero from "@/assets/cover-hero.jpg";
 
-const MARGIN = 40;
+const MARGIN = 60;
+const MARGIN_TOP = 70;
 const PAGE_W = 595.28; // A4 width in points
 const PAGE_H = 841.89; // A4 height in points
 const CONTENT_W = PAGE_W - MARGIN * 2;
