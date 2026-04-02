@@ -94,26 +94,26 @@ export async function generateBookPdf(): Promise<void> {
     doc.setTextColor(140, 145, 155);
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
-    doc.text(`Chapter ${chapter.id}`, PAGE_W / 2, 50, { align: "center" });
+    doc.text(`Chapter ${chapter.id}`, PAGE_W / 2, MARGIN_TOP, { align: "center" });
 
     // Title
     doc.setTextColor(230, 235, 245);
     doc.setFontSize(26);
     doc.setFont("helvetica", "bold");
-    doc.text(chapter.title, PAGE_W / 2, 85, { align: "center" });
+    doc.text(chapter.title, PAGE_W / 2, MARGIN_TOP + 35, { align: "center" });
 
     // Subtitle
     doc.setTextColor(170, 175, 185);
     doc.setFontSize(12);
     doc.setFont("helvetica", "italic");
-    doc.text(chapter.subtitle, PAGE_W / 2, 110, { align: "center" });
+    doc.text(chapter.subtitle, PAGE_W / 2, MARGIN_TOP + 60, { align: "center" });
 
     // Chapter image
-    let yOffset = 135;
+    let yOffset = MARGIN_TOP + 85;
     try {
       const { dataUrl, width: natW, height: natH } = await loadImageAsDataUrl(chapter.image);
       const ratio = natH / natW;
-      const imgW = Math.min(CONTENT_W, 480);
+      const imgW = Math.min(CONTENT_W, 440);
       const imgH = imgW * ratio;
       const imgX = (PAGE_W - imgW) / 2;
       doc.addImage(dataUrl, "JPEG", imgX, yOffset, imgW, imgH);
@@ -134,7 +134,7 @@ export async function generateBookPdf(): Promise<void> {
         doc.rect(0, 0, PAGE_W, PAGE_H, "F");
         doc.setTextColor(180, 185, 195);
         doc.setFontSize(11);
-        yOffset = MARGIN;
+        yOffset = MARGIN_TOP;
       }
       doc.text(lines, MARGIN, yOffset);
       yOffset += lines.length * 16 + 14;
