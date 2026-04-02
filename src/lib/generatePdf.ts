@@ -1,6 +1,6 @@
 import jsPDF from "jspdf";
 import { chapters } from "@/data/chapters";
-import coverHero from "@/assets/cover-hero.jpg";
+import pdfCover from "@/assets/pdf-cover.png";
 
 const MARGIN = 60;
 const MARGIN_TOP = 70;
