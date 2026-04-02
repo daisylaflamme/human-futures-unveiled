@@ -2,11 +2,36 @@ import jsPDF from "jspdf";
 import { chapters } from "@/data/chapters";
 import pdfCover from "@/assets/pdf-cover.png";
 
-const MARGIN = 60;
-const MARGIN_TOP = 70;
-const PAGE_W = 595.28; // A4 width in points
-const PAGE_H = 841.89; // A4 height in points
+const MARGIN = 50;
+const MARGIN_TOP = 55;
+const PAGE_W = 595.28;
+const PAGE_H = 841.89;
 const CONTENT_W = PAGE_W - MARGIN * 2;
+const FOOTER_Y = PAGE_H - 35;
+const ACCENT_R = 120;
+const ACCENT_G = 110;
+const ACCENT_B = 220;
+
+function drawPageBg(doc: jsPDF) {
+  doc.setFillColor(15, 17, 23);
+  doc.rect(0, 0, PAGE_W, PAGE_H, "F");
+}
+
+function drawFooter(doc: jsPDF, pageNum: number) {
+  // Thin separator line
+  doc.setDrawColor(50, 55, 70);
+  doc.setLineWidth(0.5);
+  doc.line(MARGIN, FOOTER_Y - 12, PAGE_W - MARGIN, FOOTER_Y - 12);
+  // "AI & Us" left
+  doc.setFont("helvetica", "bolditalic");
+  doc.setFontSize(9);
+  doc.setTextColor(160, 155, 180);
+  doc.text("AI & Us", MARGIN, FOOTER_Y);
+  // Page number right
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(140, 145, 155);
+  doc.text(String(pageNum).padStart(2, "0"), PAGE_W - MARGIN, FOOTER_Y, { align: "right" });
+}
 
 async function loadImageAsDataUrl(src: string): Promise<{ dataUrl: string; width: number; height: number }> {
   return new Promise((resolve, reject) => {
