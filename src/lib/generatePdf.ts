@@ -32,33 +32,28 @@ async function loadImageAsDataUrl(src: string): Promise<{ dataUrl: string; width
 export async function generateBookPdf(): Promise<void> {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
 
-  // ── Cover page ──
-  doc.setFillColor(15, 17, 23);
-  doc.rect(0, 0, PAGE_W, PAGE_H, "F");
-
-  // Cover hero image
-  let coverY = MARGIN_TOP;
+  // ── Cover page — full-bleed image, no text ──
   try {
-    const { dataUrl, width: natW, height: natH } = await loadImageAsDataUrl(coverHero);
+    const { dataUrl, width: natW, height: natH } = await loadImageAsDataUrl(pdfCover);
     const ratio = natH / natW;
-    const imgW = Math.min(CONTENT_W, 320);
-    const imgH = imgW * ratio;
-    const imgX = (PAGE_W - imgW) / 2;
-    doc.addImage(dataUrl, "JPEG", imgX, coverY, imgW, imgH);
-    coverY += imgH + 40;
+    const pageRatio = PAGE_H / PAGE_W;
+    let imgW: number, imgH: number, imgX: number, imgY: number;
+    if (ratio > pageRatio) {
+      imgW = PAGE_W;
+      imgH = PAGE_W * ratio;
+      imgX = 0;
+      imgY = (PAGE_H - imgH) / 2;
+    } else {
+      imgH = PAGE_H;
+      imgW = PAGE_H / ratio;
+      imgX = (PAGE_W - imgW) / 2;
+      imgY = 0;
+    }
+    doc.addImage(dataUrl, "PNG", imgX, imgY, imgW, imgH);
   } catch {
-    coverY += 200;
+    doc.setFillColor(15, 17, 23);
+    doc.rect(0, 0, PAGE_W, PAGE_H, "F");
   }
-
-  doc.setTextColor(230, 235, 245);
-  doc.setFontSize(48);
-  doc.setFont("helvetica", "bold");
-  doc.text("AI & Us", PAGE_W / 2, coverY, { align: "center" });
-
-  doc.setFontSize(16);
-  doc.setFont("helvetica", "italic");
-  doc.setTextColor(180, 185, 195);
-  doc.text("A Short Visual Book on the Human Future", PAGE_W / 2, coverY + 45, { align: "center" });
 
   // ── Table of Contents ──
   doc.addPage();
