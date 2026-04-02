@@ -2,11 +2,36 @@ import jsPDF from "jspdf";
 import { chapters } from "@/data/chapters";
 import pdfCover from "@/assets/pdf-cover.png";
 
-const MARGIN = 60;
-const MARGIN_TOP = 70;
-const PAGE_W = 595.28; // A4 width in points
-const PAGE_H = 841.89; // A4 height in points
+const MARGIN = 50;
+const MARGIN_TOP = 55;
+const PAGE_W = 595.28;
+const PAGE_H = 841.89;
 const CONTENT_W = PAGE_W - MARGIN * 2;
+const FOOTER_Y = PAGE_H - 35;
+const ACCENT_R = 120;
+const ACCENT_G = 110;
+const ACCENT_B = 220;
+
+function drawPageBg(doc: jsPDF) {
+  doc.setFillColor(15, 17, 23);
+  doc.rect(0, 0, PAGE_W, PAGE_H, "F");
+}
+
+function drawFooter(doc: jsPDF, pageNum: number) {
+  // Thin separator line
+  doc.setDrawColor(50, 55, 70);
+  doc.setLineWidth(0.5);
+  doc.line(MARGIN, FOOTER_Y - 12, PAGE_W - MARGIN, FOOTER_Y - 12);
+  // "AI & Us" left
+  doc.setFont("helvetica", "bolditalic");
+  doc.setFontSize(9);
+  doc.setTextColor(160, 155, 180);
+  doc.text("AI & Us", MARGIN, FOOTER_Y);
+  // Page number right
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(140, 145, 155);
+  doc.text(String(pageNum).padStart(2, "0"), PAGE_W - MARGIN, FOOTER_Y, { align: "right" });
+}
 
 async function loadImageAsDataUrl(src: string): Promise<{ dataUrl: string; width: number; height: number }> {
   return new Promise((resolve, reject) => {
@@ -55,105 +80,167 @@ export async function generateBookPdf(): Promise<void> {
     doc.rect(0, 0, PAGE_W, PAGE_H, "F");
   }
 
+  let pageNum = 1;
+
   // ── Table of Contents ──
   doc.addPage();
-  doc.setFillColor(15, 17, 23);
-  doc.rect(0, 0, PAGE_W, PAGE_H, "F");
+  drawPageBg(doc);
 
+  // "Table of Contents" label - same style as chapter label
+  doc.setTextColor(ACCENT_R, ACCENT_G, ACCENT_B);
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "italic");
+  doc.text("Contents", MARGIN, MARGIN_TOP);
+
+  // Accent line
+  doc.setDrawColor(ACCENT_R, ACCENT_G, ACCENT_B);
+  doc.setLineWidth(2);
+  doc.line(MARGIN, MARGIN_TOP + 10, MARGIN + 35, MARGIN_TOP + 10);
+
+  // Title
   doc.setTextColor(230, 235, 245);
-  doc.setFontSize(28);
+  doc.setFontSize(32);
   doc.setFont("helvetica", "bold");
-  doc.text("Table of Contents", PAGE_W / 2, MARGIN_TOP + 30, { align: "center" });
+  doc.text("Table of Contents", MARGIN, MARGIN_TOP + 45);
 
-  doc.setFontSize(13);
-  doc.setFont("helvetica", "normal");
   chapters.forEach((ch, i) => {
-    const y = MARGIN_TOP + 110 + i * 70;
-    doc.setTextColor(200, 205, 215);
+    const y = MARGIN_TOP + 100 + i * 65;
+    // Chapter number dot
+    doc.setFillColor(ACCENT_R, ACCENT_G, ACCENT_B);
+    doc.circle(MARGIN + 4, y - 4, 3, "F");
+    // Title
+    doc.setTextColor(220, 225, 235);
+    doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
-    doc.text(`${ch.id}. ${ch.title}`, MARGIN, y);
+    doc.text(`${ch.title}`, MARGIN + 16, y);
+    // Subtitle
     doc.setFont("helvetica", "italic");
-    doc.setTextColor(140, 145, 155);
-    doc.setFontSize(11);
-    doc.text(ch.subtitle, MARGIN, y + 20);
-    doc.setFontSize(13);
+    doc.setTextColor(130, 135, 150);
+    doc.setFontSize(10);
+    doc.text(ch.subtitle, MARGIN + 16, y + 18);
+    // Chapter number right-aligned
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100, 105, 120);
+    doc.setFontSize(10);
+    doc.text(`Chapter ${ch.id}`, PAGE_W - MARGIN, y, { align: "right" });
   });
 
+  drawFooter(doc, pageNum++);
+
   // ── Chapter pages ──
+  const PARA_INDENT = 14; // left bar + gap
+  const TEXT_W = CONTENT_W - PARA_INDENT;
+  const MAX_TEXT_Y = FOOTER_Y - 30;
+
   for (const chapter of chapters) {
     doc.addPage();
-    doc.setFillColor(15, 17, 23);
-    doc.rect(0, 0, PAGE_W, PAGE_H, "F");
+    drawPageBg(doc);
 
-    // Chapter number
-    doc.setTextColor(140, 145, 155);
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Chapter ${chapter.id}`, PAGE_W / 2, MARGIN_TOP, { align: "center" });
+    // Chapter label - italic, accent color, left-aligned
+    doc.setTextColor(ACCENT_R, ACCENT_G, ACCENT_B);
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "italic");
+    doc.text(`Chapter ${chapter.id}`, MARGIN, MARGIN_TOP);
 
-    // Title
+    // Accent underline
+    doc.setDrawColor(ACCENT_R, ACCENT_G, ACCENT_B);
+    doc.setLineWidth(2);
+    doc.line(MARGIN, MARGIN_TOP + 10, MARGIN + 35, MARGIN_TOP + 10);
+
+    // Title - large, bold, left-aligned
     doc.setTextColor(230, 235, 245);
-    doc.setFontSize(26);
+    doc.setFontSize(30);
     doc.setFont("helvetica", "bold");
-    doc.text(chapter.title, PAGE_W / 2, MARGIN_TOP + 35, { align: "center" });
+    const titleLines = doc.splitTextToSize(chapter.title, CONTENT_W);
+    doc.text(titleLines, MARGIN, MARGIN_TOP + 42);
+    const titleH = titleLines.length * 36;
 
-    // Subtitle
-    doc.setTextColor(170, 175, 185);
+    // Subtitle - italic, left-aligned
+    const subtitleY = MARGIN_TOP + 42 + titleH + 4;
+    doc.setTextColor(150, 145, 170);
     doc.setFontSize(12);
     doc.setFont("helvetica", "italic");
-    doc.text(chapter.subtitle, PAGE_W / 2, MARGIN_TOP + 60, { align: "center" });
+    doc.text(chapter.subtitle, MARGIN, subtitleY);
 
-    // Chapter image
-    let yOffset = MARGIN_TOP + 85;
+    // Chapter image - full content width with subtle border
+    let yOffset = subtitleY + 24;
     try {
       const { dataUrl, width: natW, height: natH } = await loadImageAsDataUrl(chapter.image);
       const ratio = natH / natW;
-      const imgW = Math.min(CONTENT_W, 440);
+      const imgW = CONTENT_W;
       const imgH = imgW * ratio;
-      const imgX = (PAGE_W - imgW) / 2;
-      doc.addImage(dataUrl, "JPEG", imgX, yOffset, imgW, imgH);
-      yOffset += imgH + 30;
+      // Subtle border behind image
+      doc.setDrawColor(45, 50, 70);
+      doc.setLineWidth(1);
+      doc.roundedRect(MARGIN - 1, yOffset - 1, imgW + 2, imgH + 2, 4, 4, "S");
+      doc.addImage(dataUrl, "JPEG", MARGIN, yOffset, imgW, imgH);
+      yOffset += imgH + 28;
     } catch {
       yOffset += 20;
     }
 
-    // Body paragraphs
-    doc.setTextColor(180, 185, 195);
-    doc.setFontSize(11);
+    // Body paragraphs with left accent bar
+    doc.setFontSize(10.5);
     doc.setFont("helvetica", "normal");
     for (const para of chapter.paragraphs) {
-      const lines = doc.splitTextToSize(para, CONTENT_W);
-      if (yOffset + lines.length * 16 > PAGE_H - MARGIN) {
+      const lines = doc.splitTextToSize(para, TEXT_W);
+      const blockH = lines.length * 15 + 10;
+
+      if (yOffset + blockH > MAX_TEXT_Y) {
+        drawFooter(doc, pageNum++);
         doc.addPage();
-        doc.setFillColor(15, 17, 23);
-        doc.rect(0, 0, PAGE_W, PAGE_H, "F");
-        doc.setTextColor(180, 185, 195);
-        doc.setFontSize(11);
+        drawPageBg(doc);
         yOffset = MARGIN_TOP;
       }
-      doc.text(lines, MARGIN, yOffset);
-      yOffset += lines.length * 16 + 14;
+
+      // Left accent bar
+      doc.setDrawColor(ACCENT_R, ACCENT_G, ACCENT_B);
+      doc.setLineWidth(2.5);
+      doc.line(MARGIN, yOffset - 2, MARGIN, yOffset + blockH - 14);
+
+      // Paragraph text
+      doc.setTextColor(195, 200, 210);
+      doc.text(lines, MARGIN + PARA_INDENT, yOffset);
+      yOffset += blockH + 4;
     }
+
+    drawFooter(doc, pageNum++);
   }
 
   // ── Closing page ──
   doc.addPage();
-  doc.setFillColor(15, 17, 23);
-  doc.rect(0, 0, PAGE_W, PAGE_H, "F");
+  drawPageBg(doc);
+
+  doc.setTextColor(ACCENT_R, ACCENT_G, ACCENT_B);
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "italic");
+  doc.text("Closing", MARGIN, MARGIN_TOP);
+  doc.setDrawColor(ACCENT_R, ACCENT_G, ACCENT_B);
+  doc.setLineWidth(2);
+  doc.line(MARGIN, MARGIN_TOP + 10, MARGIN + 35, MARGIN_TOP + 10);
 
   doc.setTextColor(230, 235, 245);
-  doc.setFontSize(24);
+  doc.setFontSize(30);
   doc.setFont("helvetica", "bold");
-  doc.text("Thank you for reading", PAGE_W / 2, 350, { align: "center" });
+  doc.text("Thank you\nfor reading", MARGIN, MARGIN_TOP + 45);
 
-  doc.setTextColor(160, 165, 175);
-  doc.setFontSize(11);
+  const closingText =
+    "This book was created as a digital reading experience exploring the human future with AI. The ideas here are starting points, not conclusions. The most important chapter is the one you write through your own choices.";
+  const closingLines = doc.splitTextToSize(closingText, TEXT_W);
+
+  // Left accent bar for closing
+  const closingY = MARGIN_TOP + 120;
+  const closingBlockH = closingLines.length * 15 + 10;
+  doc.setDrawColor(ACCENT_R, ACCENT_G, ACCENT_B);
+  doc.setLineWidth(2.5);
+  doc.line(MARGIN, closingY - 2, MARGIN, closingY + closingBlockH - 14);
+
+  doc.setTextColor(195, 200, 210);
+  doc.setFontSize(10.5);
   doc.setFont("helvetica", "normal");
-  const closingLines = doc.splitTextToSize(
-    "This book was created as a digital reading experience exploring the human future with AI. The ideas here are starting points, not conclusions. The most important chapter is the one you write through your own choices.",
-    360
-  );
-  doc.text(closingLines, PAGE_W / 2, 390, { align: "center" });
+  doc.text(closingLines, MARGIN + PARA_INDENT, closingY);
+
+  drawFooter(doc, pageNum);
 
   doc.save("AI-and-Us.pdf");
 }
