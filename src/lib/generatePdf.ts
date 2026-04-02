@@ -36,28 +36,29 @@ export async function generateBookPdf(): Promise<void> {
   doc.setFillColor(15, 17, 23);
   doc.rect(0, 0, PAGE_W, PAGE_H, "F");
 
-  doc.setTextColor(200, 205, 215);
-  doc.setFontSize(11);
-  doc.text("A Digital Illustrated Book", PAGE_W / 2, 280, { align: "center" });
+  // Cover hero image
+  let coverY = MARGIN_TOP;
+  try {
+    const { dataUrl, width: natW, height: natH } = await loadImageAsDataUrl(coverHero);
+    const ratio = natH / natW;
+    const imgW = Math.min(CONTENT_W, 320);
+    const imgH = imgW * ratio;
+    const imgX = (PAGE_W - imgW) / 2;
+    doc.addImage(dataUrl, "JPEG", imgX, coverY, imgW, imgH);
+    coverY += imgH + 40;
+  } catch {
+    coverY += 200;
+  }
 
   doc.setTextColor(230, 235, 245);
   doc.setFontSize(48);
   doc.setFont("helvetica", "bold");
-  doc.text("AI & Us", PAGE_W / 2, 350, { align: "center" });
+  doc.text("AI & Us", PAGE_W / 2, coverY, { align: "center" });
 
   doc.setFontSize(16);
   doc.setFont("helvetica", "italic");
   doc.setTextColor(180, 185, 195);
-  doc.text("A Short Visual Book on the Human Future", PAGE_W / 2, 395, { align: "center" });
-
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(140, 145, 155);
-  const introLines = doc.splitTextToSize(
-    "Six chapters exploring how artificial intelligence reshapes work, creativity, trust, and what it means to be human in a world of infinite possibility.",
-    300
-  );
-  doc.text(introLines, PAGE_W / 2, 450, { align: "center" });
+  doc.text("A Short Visual Book on the Human Future", PAGE_W / 2, coverY + 45, { align: "center" });
 
   // ── Table of Contents ──
   doc.addPage();
