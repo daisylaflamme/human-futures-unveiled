@@ -68,12 +68,12 @@ export async function generateBookPdf(): Promise<void> {
   doc.setTextColor(230, 235, 245);
   doc.setFontSize(28);
   doc.setFont("helvetica", "bold");
-  doc.text("Table of Contents", PAGE_W / 2, 100, { align: "center" });
+  doc.text("Table of Contents", PAGE_W / 2, MARGIN_TOP + 30, { align: "center" });
 
   doc.setFontSize(13);
   doc.setFont("helvetica", "normal");
   chapters.forEach((ch, i) => {
-    const y = 180 + i * 70;
+    const y = MARGIN_TOP + 110 + i * 70;
     doc.setTextColor(200, 205, 215);
     doc.setFont("helvetica", "bold");
     doc.text(`${ch.id}. ${ch.title}`, MARGIN, y);
