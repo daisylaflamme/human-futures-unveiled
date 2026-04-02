@@ -1,7 +1,9 @@
 import jsPDF from "jspdf";
 import { chapters } from "@/data/chapters";
+import coverHero from "@/assets/cover-hero.jpg";
 
-const MARGIN = 40;
+const MARGIN = 60;
+const MARGIN_TOP = 70;
 const PAGE_W = 595.28; // A4 width in points
 const PAGE_H = 841.89; // A4 height in points
 const CONTENT_W = PAGE_W - MARGIN * 2;
@@ -34,28 +36,29 @@ export async function generateBookPdf(): Promise<void> {
   doc.setFillColor(15, 17, 23);
   doc.rect(0, 0, PAGE_W, PAGE_H, "F");
 
-  doc.setTextColor(200, 205, 215);
-  doc.setFontSize(11);
-  doc.text("A Digital Illustrated Book", PAGE_W / 2, 280, { align: "center" });
+  // Cover hero image
+  let coverY = MARGIN_TOP;
+  try {
+    const { dataUrl, width: natW, height: natH } = await loadImageAsDataUrl(coverHero);
+    const ratio = natH / natW;
+    const imgW = Math.min(CONTENT_W, 320);
+    const imgH = imgW * ratio;
+    const imgX = (PAGE_W - imgW) / 2;
+    doc.addImage(dataUrl, "JPEG", imgX, coverY, imgW, imgH);
+    coverY += imgH + 40;
+  } catch {
+    coverY += 200;
+  }
 
   doc.setTextColor(230, 235, 245);
   doc.setFontSize(48);
   doc.setFont("helvetica", "bold");
-  doc.text("AI & Us", PAGE_W / 2, 350, { align: "center" });
+  doc.text("AI & Us", PAGE_W / 2, coverY, { align: "center" });
 
   doc.setFontSize(16);
   doc.setFont("helvetica", "italic");
   doc.setTextColor(180, 185, 195);
-  doc.text("A Short Visual Book on the Human Future", PAGE_W / 2, 395, { align: "center" });
-
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(140, 145, 155);
-  const introLines = doc.splitTextToSize(
-    "Six chapters exploring how artificial intelligence reshapes work, creativity, trust, and what it means to be human in a world of infinite possibility.",
-    300
-  );
-  doc.text(introLines, PAGE_W / 2, 450, { align: "center" });
+  doc.text("A Short Visual Book on the Human Future", PAGE_W / 2, coverY + 45, { align: "center" });
 
   // ── Table of Contents ──
   doc.addPage();
@@ -65,12 +68,12 @@ export async function generateBookPdf(): Promise<void> {
   doc.setTextColor(230, 235, 245);
   doc.setFontSize(28);
   doc.setFont("helvetica", "bold");
-  doc.text("Table of Contents", PAGE_W / 2, 100, { align: "center" });
+  doc.text("Table of Contents", PAGE_W / 2, MARGIN_TOP + 30, { align: "center" });
 
   doc.setFontSize(13);
   doc.setFont("helvetica", "normal");
   chapters.forEach((ch, i) => {
-    const y = 180 + i * 70;
+    const y = MARGIN_TOP + 110 + i * 70;
     doc.setTextColor(200, 205, 215);
     doc.setFont("helvetica", "bold");
     doc.text(`${ch.id}. ${ch.title}`, MARGIN, y);
@@ -91,26 +94,26 @@ export async function generateBookPdf(): Promise<void> {
     doc.setTextColor(140, 145, 155);
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
-    doc.text(`Chapter ${chapter.id}`, PAGE_W / 2, 50, { align: "center" });
+    doc.text(`Chapter ${chapter.id}`, PAGE_W / 2, MARGIN_TOP, { align: "center" });
 
     // Title
     doc.setTextColor(230, 235, 245);
     doc.setFontSize(26);
     doc.setFont("helvetica", "bold");
-    doc.text(chapter.title, PAGE_W / 2, 85, { align: "center" });
+    doc.text(chapter.title, PAGE_W / 2, MARGIN_TOP + 35, { align: "center" });
 
     // Subtitle
     doc.setTextColor(170, 175, 185);
     doc.setFontSize(12);
     doc.setFont("helvetica", "italic");
-    doc.text(chapter.subtitle, PAGE_W / 2, 110, { align: "center" });
+    doc.text(chapter.subtitle, PAGE_W / 2, MARGIN_TOP + 60, { align: "center" });
 
     // Chapter image
-    let yOffset = 135;
+    let yOffset = MARGIN_TOP + 85;
     try {
       const { dataUrl, width: natW, height: natH } = await loadImageAsDataUrl(chapter.image);
       const ratio = natH / natW;
-      const imgW = Math.min(CONTENT_W, 480);
+      const imgW = Math.min(CONTENT_W, 440);
       const imgH = imgW * ratio;
       const imgX = (PAGE_W - imgW) / 2;
       doc.addImage(dataUrl, "JPEG", imgX, yOffset, imgW, imgH);
@@ -131,7 +134,7 @@ export async function generateBookPdf(): Promise<void> {
         doc.rect(0, 0, PAGE_W, PAGE_H, "F");
         doc.setTextColor(180, 185, 195);
         doc.setFontSize(11);
-        yOffset = MARGIN;
+        yOffset = MARGIN_TOP;
       }
       doc.text(lines, MARGIN, yOffset);
       yOffset += lines.length * 16 + 14;
