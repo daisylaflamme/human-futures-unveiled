@@ -26,14 +26,14 @@ const g = (n: number) => n * G;
 
 const BODY_INDENT = 14;
 const BODY_TEXT_W = CONTENT_W - BODY_INDENT;
-const CHAPTER_TOP = BLEED + 42;
+const CHAPTER_TOP = BLEED + 32;
 const CHAPTER_FRAME_BOTTOM = FOOTER_Y - 28;
 const CHAPTER_FRAME_H = CHAPTER_FRAME_BOTTOM - CHAPTER_TOP;
 const CHAPTER_IMAGE_MAX_W = CONTENT_W + 20;
 const CHAPTER_LABEL_GAP = g(3.5);
 const CHAPTER_TITLE_GAP = g(2.25);
 const CHAPTER_SUBTITLE_GAP = g(3);
-const CHAPTER_IMAGE_GAP = g(4);
+const CHAPTER_IMAGE_GAP = g(4) + 16;
 
 // Accent — refined purple-blue
 const AC_R = 140, AC_G = 130, AC_B = 235;
