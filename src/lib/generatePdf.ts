@@ -275,7 +275,8 @@ function resolveChapterLayoutPreset(doc: jsPDF): ChapterLayoutPreset {
     { bodyFontSize: 11.5, bodyLineHeight: 18, paragraphGap: g(1.5), imageMaxHeight: 180 },
     { bodyFontSize: 11.25, bodyLineHeight: 17.5, paragraphGap: g(1.5), imageMaxHeight: 172 },
     { bodyFontSize: 11, bodyLineHeight: 17, paragraphGap: g(1.25), imageMaxHeight: 166 },
-    { bodyFontSize: 10.75, bodyLineHeight: 16.5, paragraphGap: g(1.25), imageMaxHeight: 156 },
+    { bodyFontSize: 11, bodyLineHeight: 17, paragraphGap: g(1.25), imageMaxHeight: 164 },
+    { bodyFontSize: 11, bodyLineHeight: 17, paragraphGap: g(1), imageMaxHeight: 162 },
   ];
 
   for (const candidate of candidates) {
