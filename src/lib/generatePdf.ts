@@ -33,7 +33,7 @@ const CHAPTER_IMAGE_MAX_W = CONTENT_W + 20;
 const CHAPTER_LABEL_GAP = g(3.5);
 const CHAPTER_TITLE_GAP = g(2.25);
 const CHAPTER_SUBTITLE_GAP = g(3);
-const CHAPTER_IMAGE_GAP = g(4);
+const CHAPTER_IMAGE_GAP = g(4) + 16;
 
 // Accent — refined purple-blue
 const AC_R = 140, AC_G = 130, AC_B = 235;
