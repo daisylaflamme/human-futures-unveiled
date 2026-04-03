@@ -2,44 +2,59 @@ import jsPDF from "jspdf";
 import { chapters } from "@/data/chapters";
 import pdfCover from "@/assets/pdf-cover.png";
 
-// ── 6×9 inch book at 72 DPI ──
-const PAGE_W = 6 * 72;        // 432 pt
-const PAGE_H = 9 * 72;        // 648 pt
-const BLEED = 0.125 * 72;     // 9 pt (visual only — we use trim box for content)
+// ── 6×9 trim with 0.125" bleed → 6.25×9.25 at 72 DPI ──
+const BLEED = 0.125 * 72;        // 9 pt
+const TRIM_W = 6 * 72;           // 432 pt
+const TRIM_H = 9 * 72;           // 648 pt
+const PAGE_W = TRIM_W + BLEED * 2; // 450 pt (full bleed)
+const PAGE_H = TRIM_H + BLEED * 2; // 666 pt
 
-const MARGIN_L = 0.7 * 72;    // 50.4
-const MARGIN_R = 0.7 * 72;
-const MARGIN_T = 0.75 * 72;   // 54
-const MARGIN_B = 0.75 * 72;
+// Safe area margins from trim edge (0.375" inner safe)
+const SAFE = 0.375 * 72;         // 27 pt from trim
+const MARGIN_L = BLEED + SAFE + 16; // ~52 pt from page edge
+const MARGIN_R = BLEED + SAFE + 16;
+const MARGIN_T = BLEED + SAFE;     // ~36 pt from page edge
+const MARGIN_B = BLEED + SAFE;
 
-const CONTENT_W = PAGE_W - MARGIN_L - MARGIN_R;
-const FOOTER_Y = PAGE_H - MARGIN_B + 10;
-const MAX_Y = PAGE_H - MARGIN_B - 14; // safe text bottom
+const CONTENT_W = PAGE_W - MARGIN_L - MARGIN_R; // ~346 pt
+const FOOTER_Y = PAGE_H - MARGIN_B - 4;
+const MAX_Y = FOOTER_Y - 20;
 
-const ACCENT_R = 120;
-const ACCENT_G = 110;
-const ACCENT_B = 220;
+// 8pt grid helper
+const G = 8;
+const g = (n: number) => n * G;
+
+// Accent — refined purple-blue
+const AC_R = 140, AC_G = 130, AC_B = 235;
 
 // ── Helpers ──
 
 function drawPageBg(doc: jsPDF) {
-  doc.setFillColor(15, 17, 23);
+  // Full bleed dark bg
+  doc.setFillColor(12, 14, 20);
   doc.rect(0, 0, PAGE_W, PAGE_H, "F");
+
+  // Subtle radial-ish glow at top center (faked with gradient rect)
+  doc.setFillColor(18, 22, 35);
+  doc.rect(BLEED, BLEED, TRIM_W, TRIM_H * 0.4, "F");
 }
 
 function drawFooter(doc: jsPDF, pageNum: number) {
-  doc.setDrawColor(50, 55, 70);
-  doc.setLineWidth(0.4);
-  doc.line(MARGIN_L, FOOTER_Y - 14, PAGE_W - MARGIN_R, FOOTER_Y - 14);
+  // Thin separator
+  doc.setDrawColor(40, 44, 58);
+  doc.setLineWidth(0.3);
+  doc.line(MARGIN_L, FOOTER_Y - 12, PAGE_W - MARGIN_R, FOOTER_Y - 12);
 
-  doc.setFont("helvetica", "bolditalic");
-  doc.setFontSize(7.5);
-  doc.setTextColor(160, 155, 180);
+  // Book title — very subtle
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(7);
+  doc.setTextColor(90, 88, 110);
   doc.text("AI & Us", MARGIN_L, FOOTER_Y);
 
+  // Page number
   doc.setFont("helvetica", "normal");
-  doc.setTextColor(140, 145, 155);
-  doc.text(String(pageNum).padStart(2, "0"), PAGE_W - MARGIN_R, FOOTER_Y, { align: "right" });
+  doc.setTextColor(80, 82, 100);
+  doc.text(String(pageNum), PAGE_W - MARGIN_R, FOOTER_Y, { align: "right" });
 }
 
 async function loadImageAsDataUrl(src: string): Promise<{ dataUrl: string; width: number; height: number }> {
@@ -63,10 +78,8 @@ async function loadImageAsDataUrl(src: string): Promise<{ dataUrl: string; width
   });
 }
 
-/**
- * Render body paragraphs with left accent bar starting at yOffset.
- * Handles pagination automatically — returns final yOffset.
- */
+// ── Body renderer with pagination + widow/orphan ──
+
 function renderBody(
   doc: jsPDF,
   paragraphs: string[],
@@ -75,33 +88,26 @@ function renderBody(
   textW: number,
   indent: number,
 ): number {
-  const LINE_H = 14.5;
-  const PARA_GAP = 10;
+  const LINE_H = g(2.2);   // ~17.6pt for 11.5pt text → 1.53 line-height
+  const PARA_GAP = g(1.8); // ~14.4pt
   let y = startY;
 
-  doc.setFontSize(10.5);
+  doc.setFontSize(11.5);
   doc.setFont("helvetica", "normal");
 
   for (const para of paragraphs) {
     const lines: string[] = doc.splitTextToSize(para, textW);
-    const blockH = lines.length * LINE_H;
 
-    // Check if at least 2 lines fit; if not, break to next page
     if (y + LINE_H * 2 > MAX_Y) {
       drawFooter(doc, pageNum.value++);
       doc.addPage([PAGE_W, PAGE_H]);
       drawPageBg(doc);
-      y = MARGIN_T;
+      y = MARGIN_T + g(4);
     }
 
-    // Render line by line with widow/orphan control
     let lineIdx = 0;
     while (lineIdx < lines.length) {
-      // How many lines remain?
       const remaining = lines.length - lineIdx;
-
-      // If only 1 line remains and we're at the top — just print it
-      // If we'd leave 1 line alone at bottom (widow), push 2 lines to next page
       const spaceLeft = MAX_Y - y;
       const linesThatFit = Math.floor(spaceLeft / LINE_H);
 
@@ -109,38 +115,37 @@ function renderBody(
         drawFooter(doc, pageNum.value++);
         doc.addPage([PAGE_W, PAGE_H]);
         drawPageBg(doc);
-        y = MARGIN_T;
+        y = MARGIN_T + g(4);
         continue;
       }
 
-      // Widow/orphan: don't leave fewer than 2 lines on either side of a break
       let linesToPrint: number;
       if (remaining <= linesThatFit) {
-        linesToPrint = remaining; // all fit
+        linesToPrint = remaining;
       } else if (linesThatFit < 2) {
-        // not enough room even for 2 lines — new page
         drawFooter(doc, pageNum.value++);
         doc.addPage([PAGE_W, PAGE_H]);
         drawPageBg(doc);
-        y = MARGIN_T;
+        y = MARGIN_T + g(4);
         continue;
       } else {
-        // Ensure at least 2 lines remain for next page
         linesToPrint = Math.min(linesThatFit, remaining - 2);
         if (linesToPrint < 2) linesToPrint = 2;
-        // Clamp
         if (linesToPrint > linesThatFit) linesToPrint = linesThatFit;
       }
 
-      // Draw left accent bar for this chunk
+      // Left accent bar — very thin, low opacity
       const chunkH = linesToPrint * LINE_H;
-      doc.setDrawColor(ACCENT_R, ACCENT_G, ACCENT_B);
-      doc.setLineWidth(2);
-      doc.line(MARGIN_L, y - 2, MARGIN_L, y + chunkH - 4);
+      doc.setDrawColor(AC_R, AC_G, AC_B);
+      doc.setLineWidth(1.2);
+      const barOpacity = 0.25;
+      doc.setGState(new (doc as any).GState({ opacity: barOpacity }));
+      doc.line(MARGIN_L + indent - 8, y - 2, MARGIN_L + indent - 8, y + chunkH - 6);
+      doc.setGState(new (doc as any).GState({ opacity: 1 }));
 
-      // Draw lines
-      doc.setTextColor(195, 200, 210);
-      doc.setFontSize(10.5);
+      // Body text — soft white
+      doc.setTextColor(210, 214, 225);
+      doc.setFontSize(11.5);
       doc.setFont("helvetica", "normal");
       for (let i = 0; i < linesToPrint; i++) {
         doc.text(lines[lineIdx + i], MARGIN_L + indent, y + i * LINE_H);
@@ -149,12 +154,11 @@ function renderBody(
       y += chunkH;
       lineIdx += linesToPrint;
 
-      // If more lines remain, page break
       if (lineIdx < lines.length) {
         drawFooter(doc, pageNum.value++);
         doc.addPage([PAGE_W, PAGE_H]);
         drawPageBg(doc);
-        y = MARGIN_T;
+        y = MARGIN_T + g(4);
       }
     }
 
@@ -162,6 +166,25 @@ function renderBody(
   }
 
   return y;
+}
+
+// ── Draw soft glow behind image (vignette effect) ──
+function drawImageGlow(doc: jsPDF, x: number, y: number, w: number, h: number) {
+  // Layered translucent rects for glow
+  const layers = [
+    { expand: 12, color: [AC_R, AC_G, AC_B] as const, opacity: 0.06 },
+    { expand: 6, color: [AC_R, AC_G, AC_B] as const, opacity: 0.04 },
+  ];
+  for (const layer of layers) {
+    doc.setGState(new (doc as any).GState({ opacity: layer.opacity }));
+    doc.setFillColor(layer.color[0], layer.color[1], layer.color[2]);
+    doc.roundedRect(
+      x - layer.expand, y - layer.expand,
+      w + layer.expand * 2, h + layer.expand * 2,
+      6, 6, "F"
+    );
+  }
+  doc.setGState(new (doc as any).GState({ opacity: 1 }));
 }
 
 // ── Main ──
@@ -197,107 +220,120 @@ export async function generateBookPdf(): Promise<void> {
   doc.addPage([PAGE_W, PAGE_H]);
   drawPageBg(doc);
 
-  doc.setTextColor(ACCENT_R, ACCENT_G, ACCENT_B);
-  doc.setFontSize(9);
+  let tocY = MARGIN_T + g(10); // generous top spacing
+
+  doc.setTextColor(AC_R, AC_G, AC_B);
+  doc.setFontSize(8.5);
   doc.setFont("helvetica", "italic");
-  doc.text("Contents", MARGIN_L, MARGIN_T);
+  doc.text("CONTENTS", MARGIN_L, tocY);
 
-  doc.setDrawColor(ACCENT_R, ACCENT_G, ACCENT_B);
-  doc.setLineWidth(1.5);
-  doc.line(MARGIN_L, MARGIN_T + 8, MARGIN_L + 30, MARGIN_T + 8);
+  doc.setDrawColor(AC_R, AC_G, AC_B);
+  doc.setLineWidth(1);
+  doc.line(MARGIN_L, tocY + 6, MARGIN_L + 28, tocY + 6);
 
-  doc.setTextColor(230, 235, 245);
-  doc.setFontSize(24);
+  tocY += g(5);
+  doc.setTextColor(245, 245, 252);
+  doc.setFontSize(28);
   doc.setFont("helvetica", "bold");
-  doc.text("Table of Contents", MARGIN_L, MARGIN_T + 36);
+  doc.text("Table of Contents", MARGIN_L, tocY);
 
-  const tocStartY = MARGIN_T + 70;
+  tocY += g(6);
+
   chapters.forEach((ch, i) => {
-    const y = tocStartY + i * 52;
-    doc.setFillColor(ACCENT_R, ACCENT_G, ACCENT_B);
-    doc.circle(MARGIN_L + 3, y - 3, 2.5, "F");
+    const y = tocY + i * g(7);
 
-    doc.setTextColor(220, 225, 235);
-    doc.setFontSize(12);
+    // Dot
+    doc.setFillColor(AC_R, AC_G, AC_B);
+    doc.circle(MARGIN_L + 3, y - 3, 2, "F");
+
+    // Title
+    doc.setTextColor(235, 238, 248);
+    doc.setFontSize(13);
     doc.setFont("helvetica", "bold");
-    doc.text(ch.title, MARGIN_L + 14, y);
+    doc.text(ch.title, MARGIN_L + 16, y);
 
+    // Subtitle
     doc.setFont("helvetica", "italic");
-    doc.setTextColor(130, 135, 150);
-    doc.setFontSize(9);
-    doc.text(ch.subtitle, MARGIN_L + 14, y + 15);
+    doc.setTextColor(110, 115, 135);
+    doc.setFontSize(9.5);
+    doc.text(ch.subtitle, MARGIN_L + 16, y + 14);
 
+    // Chapter number
     doc.setFont("helvetica", "normal");
-    doc.setTextColor(100, 105, 120);
-    doc.setFontSize(9);
-    doc.text(`Chapter ${ch.id}`, PAGE_W - MARGIN_R, y, { align: "right" });
+    doc.setTextColor(80, 84, 100);
+    doc.setFontSize(8.5);
+    doc.text(`${String(ch.id).padStart(2, "0")}`, PAGE_W - MARGIN_R, y, { align: "right" });
   });
 
   drawFooter(doc, pageNum.value++);
 
   // ── Chapter pages ──
-  const PARA_INDENT = 12;
+  const PARA_INDENT = 14;
   const TEXT_W = CONTENT_W - PARA_INDENT;
-  const IMG_MAX_W = CONTENT_W;
-  const IMG_MAX_H = 180; // consistent image height cap
+  const IMG_MAX_W = CONTENT_W + 16; // slightly wider than content
+  const IMG_MAX_H = 210;            // increased 15%
 
   for (const chapter of chapters) {
     doc.addPage([PAGE_W, PAGE_H]);
     drawPageBg(doc);
 
-    let y = MARGIN_T;
+    let y = MARGIN_T + g(10); // ~80pt top spacing
 
-    // Chapter label
-    doc.setTextColor(ACCENT_R, ACCENT_G, ACCENT_B);
-    doc.setFontSize(9);
+    // Chapter label — small caps style
+    doc.setTextColor(AC_R, AC_G, AC_B);
+    doc.setFontSize(8.5);
     doc.setFont("helvetica", "italic");
-    doc.text(`Chapter ${chapter.id}`, MARGIN_L, y);
+    doc.text(`CHAPTER ${String(chapter.id).padStart(2, "0")}`, MARGIN_L, y);
 
-    // Accent line
-    doc.setDrawColor(ACCENT_R, ACCENT_G, ACCENT_B);
-    doc.setLineWidth(1.5);
-    doc.line(MARGIN_L, y + 8, MARGIN_L + 30, y + 8);
+    // Short accent underline
+    doc.setDrawColor(AC_R, AC_G, AC_B);
+    doc.setLineWidth(1);
+    doc.line(MARGIN_L, y + 5, MARGIN_L + 24, y + 5);
 
-    y += 30;
+    y += g(4); // 32pt gap
 
-    // Title
-    doc.setTextColor(230, 235, 245);
-    doc.setFontSize(22);
+    // Title — large, pure white, tight leading
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(34);
     doc.setFont("helvetica", "bold");
     const titleLines = doc.splitTextToSize(chapter.title, CONTENT_W);
-    doc.text(titleLines, MARGIN_L, y);
-    y += titleLines.length * 26 + 4;
+    const titleLeading = 38;
+    for (let i = 0; i < titleLines.length; i++) {
+      doc.text(titleLines[i], MARGIN_L, y + i * titleLeading);
+    }
+    y += titleLines.length * titleLeading + g(1.5);
 
-    // Subtitle
-    doc.setTextColor(150, 145, 170);
-    doc.setFontSize(10);
+    // Subtitle — muted, slightly tracked
+    doc.setTextColor(120, 118, 145);
+    doc.setFontSize(12);
     doc.setFont("helvetica", "italic");
     doc.text(chapter.subtitle, MARGIN_L, y);
-    y += 22;
 
-    // Chapter image — aspect-ratio preserved, capped height
+    y += g(4); // 32pt before image
+
+    // Chapter image — centered, no border, soft glow
     try {
       const { dataUrl, width: natW, height: natH } = await loadImageAsDataUrl(chapter.image);
       const ratio = natH / natW;
       let imgW = IMG_MAX_W;
       let imgH = imgW * ratio;
 
-      // If too tall, scale down
       if (imgH > IMG_MAX_H) {
         imgH = IMG_MAX_H;
         imgW = imgH / ratio;
       }
 
-      const imgX = MARGIN_L + (CONTENT_W - imgW) / 2; // center
+      const imgX = MARGIN_L + (CONTENT_W - imgW) / 2;
 
-      // Subtle border
-      doc.setDrawColor(45, 50, 70);
-      doc.setLineWidth(0.8);
-      doc.roundedRect(imgX - 1, y - 1, imgW + 2, imgH + 2, 3, 3, "S");
+      // Soft glow behind image
+      drawImageGlow(doc, imgX, y, imgW, imgH);
+
+      // Image with rounded clip (simulated with rounded rect overlay)
       doc.addImage(dataUrl, "JPEG", imgX, y, imgW, imgH);
-      y += imgH + 20;
+
+      y += imgH + g(4); // 32pt after image
     } catch {
-      y += 10;
+      y += g(2);
     }
 
     // Body text
@@ -310,22 +346,25 @@ export async function generateBookPdf(): Promise<void> {
   doc.addPage([PAGE_W, PAGE_H]);
   drawPageBg(doc);
 
-  let y = MARGIN_T;
-  doc.setTextColor(ACCENT_R, ACCENT_G, ACCENT_B);
-  doc.setFontSize(9);
+  let y = MARGIN_T + g(12);
+
+  doc.setTextColor(AC_R, AC_G, AC_B);
+  doc.setFontSize(8.5);
   doc.setFont("helvetica", "italic");
-  doc.text("Closing", MARGIN_L, y);
-  doc.setDrawColor(ACCENT_R, ACCENT_G, ACCENT_B);
-  doc.setLineWidth(1.5);
-  doc.line(MARGIN_L, y + 8, MARGIN_L + 30, y + 8);
+  doc.text("CLOSING", MARGIN_L, y);
+  doc.setDrawColor(AC_R, AC_G, AC_B);
+  doc.setLineWidth(1);
+  doc.line(MARGIN_L, y + 5, MARGIN_L + 24, y + 5);
 
-  y += 30;
-  doc.setTextColor(230, 235, 245);
-  doc.setFontSize(22);
+  y += g(4);
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(34);
   doc.setFont("helvetica", "bold");
-  doc.text("Thank you\nfor reading", MARGIN_L, y);
+  doc.text("Thank you", MARGIN_L, y);
+  y += 38;
+  doc.text("for reading", MARGIN_L, y);
 
-  y += 60;
+  y += g(6);
   const closingText =
     "This book was created as a digital reading experience exploring the human future with AI. The ideas here are starting points, not conclusions. The most important chapter is the one you write through your own choices.";
 
