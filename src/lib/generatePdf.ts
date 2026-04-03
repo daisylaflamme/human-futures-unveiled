@@ -1,5 +1,5 @@
 import jsPDF from "jspdf";
-import { chapters } from "@/data/chapters";
+import { chapters, type Chapter } from "@/data/chapters";
 import pdfCover from "@/assets/pdf-cover.png";
 
 // ── 6×9 trim with 0.125" bleed → 6.25×9.25 at 72 DPI ──
@@ -24,8 +24,37 @@ const MAX_Y = FOOTER_Y - 20;
 const G = 8;
 const g = (n: number) => n * G;
 
+const BODY_INDENT = 14;
+const BODY_TEXT_W = CONTENT_W - BODY_INDENT;
+const CHAPTER_TOP = BLEED + 60;
+const CHAPTER_FRAME_BOTTOM = FOOTER_Y - 28;
+const CHAPTER_FRAME_H = CHAPTER_FRAME_BOTTOM - CHAPTER_TOP;
+const CHAPTER_IMAGE_MAX_W = CONTENT_W + 20;
+const CHAPTER_LABEL_GAP = g(2.5);
+const CHAPTER_TITLE_GAP = g(2.25);
+const CHAPTER_SUBTITLE_GAP = g(3);
+const CHAPTER_IMAGE_GAP = g(3);
+
 // Accent — refined purple-blue
 const AC_R = 140, AC_G = 130, AC_B = 235;
+
+type ChapterLayoutPreset = {
+  titleSize: number;
+  titleLeading: number;
+  subtitleSize: number;
+  subtitleLeading: number;
+  bodyFontSize: number;
+  bodyLineHeight: number;
+  paragraphGap: number;
+  imageMaxHeight: number;
+};
+
+type ChapterTextLayout = {
+  titleLines: string[];
+  subtitleLines: string[];
+  paragraphLines: string[][];
+  bodyHeight: number;
+};
 
 // ── Helpers ──
 
@@ -187,6 +216,83 @@ function drawImageGlow(doc: jsPDF, x: number, y: number, w: number, h: number) {
   doc.setGState(new (doc as any).GState({ opacity: 1 }));
 }
 
+function toLines(value: string | string[]): string[] {
+  return Array.isArray(value) ? value : [value];
+}
+
+function getChapterTextLayout(
+  doc: jsPDF,
+  chapter: Chapter,
+  preset: ChapterLayoutPreset,
+): ChapterTextLayout {
+  doc.setFont("times", "bold");
+  doc.setFontSize(preset.titleSize);
+  const titleLines = toLines(doc.splitTextToSize(chapter.title, CONTENT_W));
+
+  doc.setFont("times", "italic");
+  doc.setFontSize(preset.subtitleSize);
+  const subtitleLines = toLines(doc.splitTextToSize(chapter.subtitle, CONTENT_W));
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(preset.bodyFontSize);
+  const paragraphLines = chapter.paragraphs.map((paragraph) =>
+    toLines(doc.splitTextToSize(paragraph, BODY_TEXT_W)),
+  );
+
+  const bodyHeight = paragraphLines.reduce(
+    (total, lines, index) =>
+      total +
+      lines.length * preset.bodyLineHeight +
+      (index < paragraphLines.length - 1 ? preset.paragraphGap : 0),
+    0,
+  );
+
+  return { titleLines, subtitleLines, paragraphLines, bodyHeight };
+}
+
+function getChapterContentHeight(layout: ChapterTextLayout, preset: ChapterLayoutPreset): number {
+  return (
+    CHAPTER_LABEL_GAP +
+    layout.titleLines.length * preset.titleLeading +
+    CHAPTER_TITLE_GAP +
+    layout.subtitleLines.length * preset.subtitleLeading +
+    CHAPTER_SUBTITLE_GAP +
+    preset.imageMaxHeight +
+    CHAPTER_IMAGE_GAP +
+    layout.bodyHeight
+  );
+}
+
+function resolveChapterLayoutPreset(doc: jsPDF): ChapterLayoutPreset {
+  const basePreset = {
+    titleSize: 34,
+    titleLeading: 36,
+    subtitleSize: 12.5,
+    subtitleLeading: 16,
+  };
+
+  const candidates: Omit<ChapterLayoutPreset, "titleSize" | "titleLeading" | "subtitleSize" | "subtitleLeading">[] = [
+    { bodyFontSize: 11.5, bodyLineHeight: 18, paragraphGap: g(1.5), imageMaxHeight: 180 },
+    { bodyFontSize: 11.25, bodyLineHeight: 17.5, paragraphGap: g(1.5), imageMaxHeight: 172 },
+    { bodyFontSize: 11, bodyLineHeight: 17, paragraphGap: g(1.25), imageMaxHeight: 166 },
+    { bodyFontSize: 10.75, bodyLineHeight: 16.5, paragraphGap: g(1.25), imageMaxHeight: 156 },
+  ];
+
+  for (const candidate of candidates) {
+    const preset: ChapterLayoutPreset = { ...basePreset, ...candidate };
+    const fitsAllChapters = chapters.every((chapter) => {
+      const layout = getChapterTextLayout(doc, chapter, preset);
+      return getChapterContentHeight(layout, preset) <= CHAPTER_FRAME_H;
+    });
+
+    if (fitsAllChapters) {
+      return preset;
+    }
+  }
+
+  return { ...basePreset, ...candidates[candidates.length - 1] };
+}
+
 // ── Main ──
 
 export async function generateBookPdf(): Promise<void> {
@@ -268,16 +374,14 @@ export async function generateBookPdf(): Promise<void> {
   drawFooter(doc, pageNum.value++);
 
   // ── Chapter pages ──
-  const PARA_INDENT = 14;
-  const TEXT_W = CONTENT_W - PARA_INDENT;
-  const IMG_MAX_W = CONTENT_W + 16; // slightly wider than content
-  const IMG_MAX_H = 210;            // increased 15%
+  const chapterPreset = resolveChapterLayoutPreset(doc);
 
   for (const chapter of chapters) {
     doc.addPage([PAGE_W, PAGE_H]);
     drawPageBg(doc);
 
-    let y = MARGIN_T + g(10); // ~80pt top spacing
+    const chapterLayout = getChapterTextLayout(doc, chapter, chapterPreset);
+    let y = CHAPTER_TOP;
 
     // Chapter label — small caps style
     doc.setTextColor(AC_R, AC_G, AC_B);
@@ -290,37 +394,42 @@ export async function generateBookPdf(): Promise<void> {
     doc.setLineWidth(1);
     doc.line(MARGIN_L, y + 5, MARGIN_L + 24, y + 5);
 
-    y += g(4); // 32pt gap
+    y += CHAPTER_LABEL_GAP;
 
     // Title — large, pure white, tight leading
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(34);
-    doc.setFont("helvetica", "bold");
-    const titleLines = doc.splitTextToSize(chapter.title, CONTENT_W);
-    const titleLeading = 38;
-    for (let i = 0; i < titleLines.length; i++) {
-      doc.text(titleLines[i], MARGIN_L, y + i * titleLeading);
+    doc.setFontSize(chapterPreset.titleSize);
+    doc.setFont("times", "bold");
+    for (let i = 0; i < chapterLayout.titleLines.length; i++) {
+      doc.text(chapterLayout.titleLines[i], MARGIN_L, y + i * chapterPreset.titleLeading);
     }
-    y += titleLines.length * titleLeading + g(1.5);
+    y += chapterLayout.titleLines.length * chapterPreset.titleLeading + CHAPTER_TITLE_GAP;
 
     // Subtitle — muted, slightly tracked
-    doc.setTextColor(120, 118, 145);
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "italic");
-    doc.text(chapter.subtitle, MARGIN_L, y);
+    doc.setTextColor(132, 138, 162);
+    doc.setFontSize(chapterPreset.subtitleSize);
+    doc.setFont("times", "italic");
+    for (let i = 0; i < chapterLayout.subtitleLines.length; i++) {
+      doc.text(chapterLayout.subtitleLines[i], MARGIN_L, y + i * chapterPreset.subtitleLeading);
+    }
 
-    y += g(4); // 32pt before image
+    y += chapterLayout.subtitleLines.length * chapterPreset.subtitleLeading + CHAPTER_SUBTITLE_GAP;
 
-    // Chapter image — centered, no border, soft glow
+    // Chapter image — centered, contained, soft glow
     try {
       const { dataUrl, width: natW, height: natH } = await loadImageAsDataUrl(chapter.image);
       const ratio = natH / natW;
-      let imgW = IMG_MAX_W;
+      let imgW = CHAPTER_IMAGE_MAX_W;
       let imgH = imgW * ratio;
 
-      if (imgH > IMG_MAX_H) {
-        imgH = IMG_MAX_H;
+      if (imgH > chapterPreset.imageMaxHeight) {
+        imgH = chapterPreset.imageMaxHeight;
         imgW = imgH / ratio;
+      }
+
+      if (imgW > CHAPTER_IMAGE_MAX_W) {
+        imgW = CHAPTER_IMAGE_MAX_W;
+        imgH = imgW * ratio;
       }
 
       const imgX = MARGIN_L + (CONTENT_W - imgW) / 2;
@@ -331,13 +440,34 @@ export async function generateBookPdf(): Promise<void> {
       // Image with rounded clip (simulated with rounded rect overlay)
       doc.addImage(dataUrl, "JPEG", imgX, y, imgW, imgH);
 
-      y += imgH + g(4); // 32pt after image
+      y += imgH + CHAPTER_IMAGE_GAP;
     } catch {
-      y += g(2);
+      y += CHAPTER_IMAGE_GAP;
     }
 
-    // Body text
-    y = renderBody(doc, chapter.paragraphs, y, pageNum, TEXT_W, PARA_INDENT);
+    // Body text — single contained block
+    doc.setDrawColor(AC_R, AC_G, AC_B);
+    doc.setLineWidth(1);
+    doc.setGState(new (doc as any).GState({ opacity: 0.2 }));
+    doc.line(MARGIN_L + BODY_INDENT - 8, y - 2, MARGIN_L + BODY_INDENT - 8, y + chapterLayout.bodyHeight - 4);
+    doc.setGState(new (doc as any).GState({ opacity: 1 }));
+
+    doc.setTextColor(214, 218, 228);
+    doc.setFontSize(chapterPreset.bodyFontSize);
+    doc.setFont("helvetica", "normal");
+
+    for (let paragraphIndex = 0; paragraphIndex < chapterLayout.paragraphLines.length; paragraphIndex++) {
+      const lines = chapterLayout.paragraphLines[paragraphIndex];
+      for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+        doc.text(lines[lineIndex], MARGIN_L + BODY_INDENT, y + lineIndex * chapterPreset.bodyLineHeight);
+      }
+
+      y += lines.length * chapterPreset.bodyLineHeight;
+
+      if (paragraphIndex < chapterLayout.paragraphLines.length - 1) {
+        y += chapterPreset.paragraphGap;
+      }
+    }
 
     drawFooter(doc, pageNum.value++);
   }
@@ -368,7 +498,7 @@ export async function generateBookPdf(): Promise<void> {
   const closingText =
     "This book was created as a digital reading experience exploring the human future with AI. The ideas here are starting points, not conclusions. The most important chapter is the one you write through your own choices.";
 
-  renderBody(doc, [closingText], y, pageNum, TEXT_W, PARA_INDENT);
+  renderBody(doc, [closingText], y, pageNum, BODY_TEXT_W, BODY_INDENT);
   drawFooter(doc, pageNum.value);
 
   doc.save("AI-and-Us.pdf");
