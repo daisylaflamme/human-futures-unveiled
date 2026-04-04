@@ -31,6 +31,12 @@ const CoverPage = () => {
             >
               A Short Visual Book on the Human Future
             </p>
+            <p
+              className="text-sm sm:text-base text-muted-foreground/70 mt-2 tracking-widest uppercase"
+              style={{ fontFamily: "'Playfair Display', serif", letterSpacing: "0.15em" }}
+            >
+              by Daisy Laflamme
+            </p>
           </div>
 
           {/* Hero image */}
