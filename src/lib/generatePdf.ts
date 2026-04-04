@@ -317,6 +317,12 @@ export async function generateBookPdf(): Promise<void> {
       imgY = 0;
     }
     doc.addImage(dataUrl, "PNG", imgX, imgY, imgW, imgH);
+
+    // Author on cover — bottom center
+    doc.setTextColor(220, 220, 230);
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "normal");
+    doc.text("Daisy Laflamme", PAGE_W / 2, PAGE_H - BLEED - SAFE - 20, { align: "center" });
   } catch {
     drawPageBg(doc);
   }
@@ -495,7 +501,13 @@ export async function generateBookPdf(): Promise<void> {
   y += 38;
   doc.text("for reading", MARGIN_L, y);
 
-  y += g(6);
+  y += g(5);
+  doc.setTextColor(AC_R, AC_G, AC_B);
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "italic");
+  doc.text("Written by Daisy Laflamme", MARGIN_L, y);
+
+  y += g(4);
   const closingText =
     "This book was created as a digital reading experience exploring the human future with AI. The ideas here are starting points, not conclusions. The most important chapter is the one you write through your own choices.";
 

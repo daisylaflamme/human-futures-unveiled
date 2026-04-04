@@ -39,9 +39,13 @@ const ClosingPage = () => {
             This book was created as a digital reading experience exploring the
             human future with AI.
           </p>
-          <p className="text-muted-foreground leading-relaxed mb-12 text-sm">
+          <p className="text-muted-foreground leading-relaxed mb-4 text-sm">
             The ideas here are starting points, not conclusions. The most
             important chapter is the one you write through your own choices.
+          </p>
+
+          <p className="text-muted-foreground/60 text-xs tracking-widest uppercase mb-12">
+            Written by Daisy Laflamme
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
