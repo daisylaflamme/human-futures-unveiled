@@ -79,10 +79,16 @@ const CoverPage = () => {
               AI & Us
             </h1>
             <p
-              className="text-xl xl:text-2xl text-muted-foreground font-light italic mb-10"
+              className="text-xl xl:text-2xl text-muted-foreground font-light italic mb-4"
               style={{ fontFamily: "'Playfair Display', serif" }}
             >
               A Short Visual Book on the Human Future
+            </p>
+            <p
+              className="text-sm text-muted-foreground/60 mb-10 tracking-widest uppercase"
+              style={{ fontFamily: "'Playfair Display', serif", letterSpacing: "0.15em" }}
+            >
+              by Daisy Laflamme
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4">

@@ -44,6 +44,10 @@ const ClosingPage = () => {
             important chapter is the one you write through your own choices.
           </p>
 
+          <p className="text-muted-foreground/60 text-xs tracking-widest uppercase mb-12">
+            Written by Daisy Laflamme
+          </p>
+
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link to="/chapters">
               <Button variant="outline" className="gap-2">
