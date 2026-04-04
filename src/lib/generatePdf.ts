@@ -317,6 +317,12 @@ export async function generateBookPdf(): Promise<void> {
       imgY = 0;
     }
     doc.addImage(dataUrl, "PNG", imgX, imgY, imgW, imgH);
+
+    // Author on cover — bottom center
+    doc.setTextColor(220, 220, 230);
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "normal");
+    doc.text("Daisy Laflamme", PAGE_W / 2, PAGE_H - BLEED - SAFE - 20, { align: "center" });
   } catch {
     drawPageBg(doc);
   }
