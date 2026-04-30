@@ -125,7 +125,7 @@ const PageTurn = ({ children }: PageTurnProps) => {
         overflowX: "hidden",
       }}
     >
-      <AnimatePresence mode="popLayout" initial={false} custom={direction}>
+      <AnimatePresence mode="wait" initial={false} custom={direction}>
         <motion.div
           key={location.pathname}
           drag={skip ? false : "x"}
